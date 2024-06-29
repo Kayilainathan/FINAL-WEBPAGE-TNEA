@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TNEA Choice List Generator</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 20px;
+            background-color: #111; /* Darker background */
+            color: #fff; /* White text */
+        }
+
+        h1, h2, h3 {
+            text-align: center;
+            color: #fff; /* White text */
+        }
+
+        h2 {
+            color: #FF69B4; /* Hot pink */
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #FF69B4; /* Hot pink */
+        }
+
+        input, select, button {
+            width: 100%;
+            padding: 10px;
+            margin-top: 5px;
+            box-sizing: border-box;
+            border-radius: 30px; /* Oval curved */
+            background-color: #555; /* Dark background for inputs */
+            border: 1px solid #888;
+            color: #fff; /* White text */
+        }
+
+        button {
+            background-color: #800080; /* Purple */
+            color: #fff; /* White text */
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s ease, color 0.3s ease;
+            padding: 10px 20px;
+            border-radius: 30px; /* Oval curved */
+            font-weight: bold;
+            position: relative;
+            overflow: hidden;
+        }
+
+        button:hover {
+            background-color: #9400D3; /* Violet */
+        }
+
+        .loading-animation {
+            position: absolute;
+            width: 0%;
+            height: 100%;
+            top: 0;
+            left: 0;
+            background-color: #9400D3; /* Violet */
+            animation: loading 1s forwards;
+        }
+
+        @keyframes loading {
+            0% {
+                width: 0%;
+            }
+            100% {
+                width: 100%;
+            }
+        }
+
+        .result {
+            margin-top: 20px;
+            color: #fff; /* White text */
+        }
+
+        .result table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        .result table, th, td {
+            border: 1px solid #888;
+            padding: 10px;
+            color: #fff; /* White text */
+        }
+
+        .choices-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .choice-group {
+            flex: 1 1 200px;
+        }
+
+        button.download {
+            background-color: #800080; /* Purple */
+            color: #fff; /* White text */
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s ease, color 0.3s ease;
+            border-radius: 30px; /* Oval curved */
+            padding: 10px 20px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        button.download:hover {
+            background-color: #9400D3; /* Violet */
+        }
+
+        #codedBy {
+            text-align: center;
+            color: #FF69B4; /* Hot pink */
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>TNEA Choice List Generator</h1>
+
+    <form id="choiceForm">
+        <div class="form-group">
+            <label for="name">Enter your name:</label>
+            <input type="text" id="name" required>
+        </div>
+        <div class="form-group">
+            <label for="cutoff">Enter your Cut off:</label>
+            <input type="number" step="0.1" id="cutoff" required max="200">
+        </div>
+        <div class="form-group">
+            <label for="numChoices">Enter the number of choices you wish to fill:</label>
+            <input type="number" id="numChoices" required>
+        </div>
+        <div class="form-group">
+            <button type="button" onclick="generateChoicesForm()">Generate Choices Form</button>
+            <button type="button" onclick="showCollegeList()">Show College List</button>
+        </div>
+        <div id="codedBy">Coded by Kayilainathan</div>
+        <div class="choices-container" id="choicesContainer"></div>
+        <div class="form-group">
+            <button id="submitBtn" type="button" style="display: none;" onclick="submitChoices()">Submit</button>
+        </div>
+    </form>
+
+    <div class="result" id="result"></div>
+
+    <button id="downloadButton" class="download" onclick="downloadGeneratedList()">Download Choice List</button>
+    <button id="downloadTopCollegesButton" class="download" onclick="downloadTopColleges()" style="display: none;">Download Top Colleges (Excel)</button>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.4/xlsx.full.min.js"></script>
+    <script>
+        const colleges = [
+  { "code": 1, "name": "University Departments of Anna University, Chennai - CEG Campus, Sardar Patel Road, Guindy, Chennai 600 025" },
+  { "code": 2, "name": "University Departments of Anna University, Chennai - ACT Campus, Sardar Patel Road, Guindy, Chennai 600 025" },
+  { "code": 4, "name": "University Departments of Anna University, Chennai - MIT Campus, Chrompet, Tambaram Taluk, Chengalpattu District 600 044" },
+  { "code": 1112, "name": "R M D Engineering College (Autonomous), Kavaraipettai, Gummidipoondi, Thiruvallur District 601206" },
+  { "code": 1113, "name": "R M K Engineering College (Autonomous), Kavaraipettai, Gummidipoondi, Thiruvallur District 601206" },
+  { "code": 1128, "name": "R M K College of Engineering and Technology (Autonomous), Puduvoyal, Gummidipoondi Taluk, Thiruvallur District 601206" },
+  { "code": 1210, "name": "Panimalar Engineering College (Autonomous), Nazarethpet, Poonamallee, Chennai 602123" },
+  { "code": 1211, "name": "Rajalakshmi Engineering College (Autonomous), Thandalam, Sriperumpudur Taluk, Kancheepuram District 602105" },
+  { "code": 1216, "name": "Saveetha Engineering College (Autonomous), Thandalam, Sriperumpudur Taluk, Kancheepuram District 602105" },
+  { "code": 1219, "name": "Sri Venkateswara College of Engineering (Autonomous), Post Bag No.1, Chennai-Bengaluru High Road, Pennalur, Irungattukottai S.O., Sriperumbudur Taluk, Kancheepuram District 602105" },
+  { "code": 1304, "name": "Easwari Engineering College (Autonomous), Ramapuram, Chennai 600089" },
+  { "code": 1309, "name": "Meenakshi Sundararajan Engineering College, Kodambakkam, Chennai 600024" },
+  { "code": 1315, "name": "Sri Sivasubramaniya Nadar College of Engineering (Autonomous), Kalavakkam, Old Mahabalipuram Road (OMR), Chengalpattu District 603110" },
+  { "code": 1317, "name": "St. Joseph’s College of Engineering (Autonomous), Old Mahabalipuram Road (OMR), Chennai 600 119" },
+  { "code": 1324, "name": "Sri Sai Ram Institute of Technology (Autonomous), West Tambaram, Chennai 600044" },
+  { "code": 1398, "name": "Chennai Institute of Technology and Applied Research, Puduper Village, Nandambakkam Post, Kundrathur, Chennai 600069" },
+  { "code": 1399, "name": "Chennai Institute of Technology, Puduper Village, Nandambakkam Post, Kundrathur, Chennai 600069" },
+  { "code": 1419, "name": "Sri Sai Ram Engineering College (Autonomous), West Tambaram, Chennai 600044" },
+  { "code": 1422, "name": "SRM Valliammai Engineering College (Autonomous), Kattankulathur, Chennai 603203" },
+  { "code": 1432, "name": "Rajalakshmi Institute of Technology, Irulapalayam, Kuthampakkam Post, Kancheepuram District, Chennai 600124" },
+  { "code": 1450, "name": "Loyola ICAM College of Engineering and Technology, Loyola College Campus, Nungambakkam, Chennai 600034" },
+  { "code": 2005, "name": "Government College of Technology (Autonomous), Thadagam Road, Coimbatore District 641013" },
+  { "code": 2006, "name": "PSG College of Technology (Autonomous), Peelamedu, Coimbatore District 641004" },
+  { "code": 2007, "name": "Coimbatore Institute of Technology (Autonomous), Civil Aerodrome Post, Coimbatore District 641014" },
+  { "code": 2377, "name": "PSG Institute of Technology and Applied Research, Avinashi Road, Neelambur, Coimbatore 641062" },
+  { "code": 2615, "name": "Government College of Engineering (Autonomous), Karuppur, Salem District 636011" },
+  { "code": 2618, "name": "Sona College of Technology (Autonomous), Suramangalam Post, Salem District 636005" },
+  { "code": 2702, "name": "Bannari Amman Institute of Technology (Autonomous), Sathyamanagalam, Erode District 638401" },
+  { "code": 2706, "name": "Dr. Mahalingam College of Engineering and Technology (Autonomous), Mackinaickenpatti Post, Pollachi Taluk, Coimbatore District 642003" },
+  { "code": 2710, "name": "Karpagam College of Engineering (Autonomous), Othakkalmandapam, Coimbatore District 641032" },
+  { "code": 2711, "name": "Kongu Engineering College (Autonomous), Perundurai, Erode District 638052" },
+  { "code": 2712, "name": "Kumaraguru College of Technology (Autonomous), Chinnavedampatti Post, Coimbatore District 641006" },
+  { "code": 2718, "name": "Sri Krishna College of Engineering and Technology (Autonomous), Kuniamuthur, Coimbatore District 641008" },
+  { "code": 2719, "name": "Sri Ramakrishna Engineering College (Autonomous), Vattamalaipalayam, Coimbatore District 641022" },
+  { "code": 2722, "name": "Sri Krishna College of Technology (Autonomous), Kovaipudur Post, Coimbatore District 641042" },
+  { "code": 2739, "name": "Sri Eshwar College of Engineering (Autonomous), Kinathukadavu, Coimbatore District 641202" },
+  { "code": 2764, "name": "K P R Institute of Engineering and Technology (Autonomous), Kollupalayam Village, Arasur Panchayat, Coimbatore District 641407" },
+  { "code": 3465, "name": "Government College of Engineering, Srirangam, Trichy District 620012" },
+  { "code": 4960, "name": "Mepco Schlenk Engineering College (Autonomous), Sivakasi, Virudhunagar District 626005" },
+  { "code": 4962, "name": "National Engineering College (Autonomous), Kovilpatti, Thoothukudi District 628503" },
+  { "code": 4974, "name": "Government College of Engineering, Tirunelveli District 627007" },
+  { "code": 5008, "name": "Thiagarajar College of Engineering (Autonomous), Tirupparankundram, Madurai District 625015" },
+  { "code": 5012, "name": "Central Electrochemical Research Institute (CECRI), Karaikudi, Sivagangai District 630006" },
+  { "code": 5901, "name": "Alagappa Chettiar Government College of Engineering and Technology (Autonomous), Karaikudi, Sivagangai District 630004" },
+  { "code": 5986, "name": "Velammal College of Engineering and Technology, Madurai District 625009" }
+];
+
+        function generateChoicesForm() {
+            document.getElementById('codedBy').style.display = 'none';
+
+            const numChoices = parseInt(document.getElementById('numChoices').value);
+            const choicesContainer = document.getElementById('choicesContainer');
+            choicesContainer.innerHTML = '';
+
+            for (let i = 1; i <= numChoices; i++) {
+                const choiceGroup = document.createElement('div');
+                choiceGroup.className = 'choice-group';
+
+                const collegeLabel = document.createElement('label');
+                collegeLabel.textContent = `Choice ${i} - College Code:`;
+                choiceGroup.appendChild(collegeLabel);
+
+                const collegeSelect = document.createElement('select');
+                collegeSelect.id = `collegeCode${i}`;
+                collegeSelect.required = true;
+                const defaultOption = document.createElement('option');
+                defaultOption.value = '';
+                defaultOption.textContent = 'Select College Code';
+                collegeSelect.appendChild(defaultOption);
+                colleges.forEach(college => {
+                    const option = document.createElement('option');
+                    option.value = college.code;
+                    option.textContent = `${college.code} - ${college.name}`;
+                    collegeSelect.appendChild(option);
+                });
+                choiceGroup.appendChild(collegeSelect);
+
+                const collegeInput = document.createElement('input');
+                collegeInput.type = 'text';
+                collegeInput.id = `collegeCodeInput${i}`;
+                collegeInput.placeholder = 'Or enter College Code';
+                choiceGroup.appendChild(collegeInput);
+
+                const departmentLabel = document.createElement('label');
+                departmentLabel.textContent = `Choice ${i} - Department:`;
+                choiceGroup.appendChild(departmentLabel);
+
+                const departmentInput = document.createElement('input');
+                departmentInput.type = 'text';
+                departmentInput.id = `department${i}`;
+                departmentInput.required = true;
+                choiceGroup.appendChild(departmentInput);
+
+                choicesContainer.appendChild(choiceGroup);
+            }
+
+            document.getElementById('submitBtn').style.display = 'block';
+        }
+
+        function submitChoices() {
+            const submitBtn = document.getElementById('submitBtn');
+            const loadingDiv = document.createElement('div');
+            loadingDiv.className = 'loading-animation';
+            submitBtn.appendChild(loadingDiv);
+
+            setTimeout(() => {
+                const name = document.getElementById('name').value;
+                const cutoff = parseFloat(document.getElementById('cutoff').value);
+                const numChoices = parseInt(document.getElementById('numChoices').value);
+
+                let resultHtml = `<h2>Choice List Generated Successfully!</h2>`;
+                resultHtml += `<p>Name: ${name}</p>`;
+                resultHtml += `<p>Cut off: ${cutoff.toFixed(1)}</p>`;
+                resultHtml += `<p>Number of Choices: ${numChoices}</p>`;
+                resultHtml += `<table><tr><th>Choice</th><th>College Code</th><th>College Name</th><th>Department</th></tr>`;
+
+                for (let i = 1; i <= numChoices; i++) {
+                    const collegeSelectValue = document.getElementById(`collegeCode${i}`).value;
+                    const collegeInputValue = document.getElementById(`collegeCodeInput${i}`).value.trim();
+                    const collegeCode = collegeSelectValue || collegeInputValue;
+                    const department = document.getElementById(`department${i}`).value;
+
+                    const college = colleges.find(col => col.code == collegeCode);
+                    const collegeName = college ? college.name : "Unknown";
+
+                    resultHtml += `<tr><td>${i}</td><td>${collegeCode}</td><td>${collegeName}</td><td>${department}</td></tr>`;
+                }
+
+                resultHtml += `</table>`;
+                resultHtml += `<div id="codedByEnd">Coded by: Kayilainathan</div>`;
+                document.getElementById('result').innerHTML = resultHtml;
+
+                window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+
+                document.getElementById('downloadButton').style.display = 'block';
+                loadingDiv.remove();
+            }, 1000); // Simulate a delay for the loading animation
+        }
+
+        function downloadGeneratedList() {
+            const name = document.getElementById('name').value;
+            const cutoff = parseFloat(document.getElementById('cutoff').value);
+            const numChoices = parseInt(document.getElementById('numChoices').value);
+
+            let data = [
+                { ' ': `TNEA Choice List` },
+                { ' ': `` },
+                { ' ': `Name: ${name}` },
+                { ' ': `Cut off: ${cutoff.toFixed(1)}` },
+                { ' ': `Number of Choices: ${numChoices}` },
+                { ' ': `` },
+                { 'S.No': 'S.No', 'College Code': 'College Code', 'College Name': 'College Name', 'Department': 'Department' }
+            ];
+
+            for (let i = 1; i <= numChoices; i++) {
+                const collegeSelectValue = document.getElementById(`collegeCode${i}`).value;
+                const collegeInputValue = document.getElementById(`collegeCodeInput${i}`).value.trim();
+                const collegeCode = collegeSelectValue || collegeInputValue;
+                const department = document.getElementById(`department${i}`).value;
+
+                const college = colleges.find(col => col.code == collegeCode);
+                const collegeName = college ? college.name : "Unknown";
+
+                data.push({
+                    'S.No': i,
+                    'College Code': collegeCode,
+                    'College Name': collegeName,
+                    'Department': department
+                });
+            }
+
+            data.push({ ' ': `` });
+            data.push({ ' ': `Coded by Kayilainathan` });
+            data.push({ ' ': `Thanks for downloading, ${name}!` });
+
+            const filename = 'choice_list.xlsx';
+            saveExcelFile(data, filename);
+        }
+
+        function downloadTopColleges() {
+            const filename = 'top_colleges.xlsx';
+            const data = generateTopCollegesExcel();
+            saveExcelFile(data, filename);
+        }
+
+        function generateTopCollegesExcel() {
+            const data = colleges.map(college => ({ 'College Code': college.code, 'College Name': college.name }));
+            return data;
+        }
+
+        function saveExcelFile(data, filename) {
+            const worksheet = XLSX.utils.json_to_sheet(data, { skipHeader: true });
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
+
+            // Set column widths (adjust as needed)
+            worksheet['!cols'] = [
+                { wch: 8,wrapText: true}, // S.No
+                { wch: 8,wrapText: true}, // College Code
+                { wch: 15,wrapText: true}, // College code
+                { wch: 40, wrapText: true } // College Name (wider for wrapping)
+            ];
+
+            XLSX.writeFile(workbook, filename);
+        }
+
+        function showCollegeList() {
+            let collegeListHtml = '<h3>Top Colleges List</h3>';
+            collegeListHtml += '<table>';
+            collegeListHtml += '<tr><th>College Code</th><th>College Name</th></tr>';
+            colleges.forEach(college => {
+                collegeListHtml += `<tr><td>${college.code}</td><td>${college.name}</td></tr>`;
+            });
+            collegeListHtml += '</table>';
+
+            document.getElementById('result').innerHTML = collegeListHtml;
+
+            document.getElementById('downloadTopCollegesButton').style.display = 'block';
+            window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+        }
+    </script>
+</body>
+</html>
